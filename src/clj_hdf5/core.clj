@@ -1,9 +1,10 @@
 (ns clj-hdf5.core
   (:refer-clojure :exclude [read name])
   (:require clojure.string)
-  (:import java.io.File
+  (:import (java.io.File)
            (ch.systemsx.cisd.hdf5 HDF5Factory IHDF5SimpleReader
-                                  IHDF5SimpleWriter)))
+                                  IHDF5SimpleWriter HDF5FactoryProvider
+                                  HDF5DataClass)))
 
 ; Record definitions
 ; A node is defined by its reader/writerand its path inside that file.
