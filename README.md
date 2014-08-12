@@ -13,14 +13,11 @@ This library is work in progress. Only scalar and 1D array data
 are supported at the moment, both for datasets and attributes.
 
 
-Building:
+Notes on JHDF5:
 =========
-This build depends on a local jar for JHDF5. Build is managed by Leiningen, and the local jar dependency is resolved by creating a local maven repository more or less like:
-
-    mvn deploy:deploy-file -DgroupId=cisd -DartifactId=jhdf5 \
-    -Dversion=13.06.2 -Dpackaging=jar \
-    -Dfile=/path/to/cisd-jhdf5-batteries_included_lin_win_mac_sol.jar \
-    -Durl=file:repo
+This library uses CISD's JHDF5 libraries. We have published these 
+libraries to clojars.org for your convenience. Solaris is at the
+moment not supported.
 
 
 Building Documentation:
