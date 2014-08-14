@@ -6,6 +6,6 @@
   :aot [clj-hdf5.core]
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [net.mikera/core.matrix "0.28.0"]
-                 [io.kimchi/cisd-jhdf5-core "13.06.2"]]
-  :native-dependencies [[io.kimchi/cisd-jhdf5-native-deps "13.06.2"]]
+                 [io.kimchi/cisd-jhdf5-core "13.06.2"]
+				 [io.kimchi/cisd-jhdf5-native-deps "13.06.2"]]  
   :plugins [[codox "0.6.4"]])
