@@ -3,6 +3,7 @@
             [clojure.core.matrix.protocols :as mp]
             [clojure.core.matrix.implementations :as imp])
   (:import (java.io.File)
+           (ch.systemsx.cisd.base HDF5TimeDurationMDArray)
            (ch.systemsx.cisd.base.mdarray MDByteArray
                                           MDDoubleArray MDDoubleArray
                                           MDFloatArray MDIntArray

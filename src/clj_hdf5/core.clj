@@ -7,7 +7,7 @@
                                   HDF5DataClass)))
 
 ; Record definitions
-; A node is defined by its reader/writerand its path inside that file.
+; A node is defined by its reader/writer and its path inside that file.
 (defrecord hdf-node
   [accessor path])
 
