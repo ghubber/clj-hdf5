@@ -43,9 +43,17 @@
             (is (true? (.exists h5file)))
             (is (true? (root? h5root)))))))
 
-
-(deftest create-a-new-group
-  (testing "Creating a new group"))
+(deftest create-nested-groups
+  (testing "Creating a new group")
+  (let [h5file (get-tmp-file)]
+    (with-open [h5root h5file :read-write]
+      (let [nested-group (create-group h5root "node1/node2/node3")
+            node1 (lookup h5root "node1")
+            node2 (lookup node1 "node2")
+            node3 (lookup node2 "node3")]
+        (is (= "/node1" (:path node1)))
+        (is (= "/node1/node2" (:path node2)))
+        (is (= "/node1/node2/node3" (:path node3)))))))
 
 
 
