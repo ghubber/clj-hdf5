@@ -1,8 +1,8 @@
-(ns clj-hdf5.mdarray
+(ns clj-hdf5.mdarray-abstract
   (:require [clojure.core.matrix.protocols :as mp])
   (:require [clojure.core.matrix.implementations :as imp])
   (:import  [ch.systemsx.cisd.base.mdarray MDAbstractArray MDByteArray MDDoubleArray MDFloatArray MDIntArray
-                                           MDLongArray MDShortArray]))
+             MDLongArray MDShortArray]))
 
 (defn value-coerce [m x]
   (let [t (mp/element-type m)]
@@ -57,42 +57,26 @@
        (supports-dimensionality? [~'m ~'dims]
          true))
 
-     (extend-protocol mp/PIndexedSettingMutable
+     (extend-protocol mp/PMatrixCloning
        ~array-type
-       (set-1d! [~'m ~'x ~'v]
-         (when-not (== 1 (mp/dimensionality ~'m))
-           (throw (IllegalArgumentException. "can't use set-1d! on non-vector")))
-         (.set ~'m (~type-cast ~'v) (int ~'x)))
-       (set-2d! [~'m ~'x ~'y ~'v]
-         (when-not (== 2 (mp/dimensionality ~'m))
-           (throw (IllegalArgumentException. "can't use set-2d! on non-matrix")))
-         (.set ~'m (~type-cast ~'v) (int-array [~'x ~'y])))
-       (set-nd! [~'m ~'indices ~'v]
-         (when-not (= (count ~'indices) (mp/dimensionality ~'m))
-           (throw (IllegalArgumentException.
-                    "index count should match dimensionality")))
-         (.set ~'m (~type-cast ~'v) (int-array ~'indices))))
+       (clone [~'m]
+         (new ~array-type (.getCopyAsFlatArray ~'m) (.dimensions ~'m))))
 
-    (extend-protocol mp/PMatrixCloning
-      ~array-type
-      (clone [~'m]
-        (new ~array-type (.getCopyAsFlatArray ~'m) (.dimensions ~'m))))
+     (extend-protocol mp/PTypeInfo
+       ~array-type
+       (element-type [~'m]
+         ~object-type))
 
-    (extend-protocol mp/PTypeInfo
-      ~array-type
-      (element-type [~'m]
-        ~object-type))
+     (extend-protocol mp/PNumerical
+       ~array-type
+       (numerical? [~'m]
+         ~is-numerical))))
 
-    (extend-protocol mp/PNumerical
-      ~array-type
-      (numerical? [~'m]
-        ~is-numerical))))
-
-(make-concrete :mdarray-double double MDDoubleArray Double/TYPE double true)
-(make-concrete :mdarray-float float MDFloatArray Float/TYPE float true)
-(make-concrete :mdarray-int int MDIntArray Integer/TYPE int true)
-(make-concrete :mdarray-long long MDLongArray Long/TYPE long true)
-(make-concrete :mdarray-short short MDShortArray Short/TYPE short true)
+(make-concrete :mdarray-abstract-double double MDDoubleArray Double/TYPE double true)
+(make-concrete :mdarray-abstract-float float MDFloatArray Float/TYPE float true)
+(make-concrete :mdarray-abstract-int int MDIntArray Integer/TYPE int true)
+(make-concrete :mdarray-abstract-long long MDLongArray Long/TYPE long true)
+(make-concrete :mdarray-abstract-short short MDShortArray Short/TYPE short true)
 
 (extend-protocol mp/PDimensionInfo
   MDAbstractArray

@@ -1,9 +1,9 @@
-(ns clj-hdf5.mdarray-test
+(ns clj-hdf5.mdarray-abstract-test
   (:use clojure.test)
   (:use clojure.core.matrix)
   (:require [clojure.core.matrix.compliance-tester :as ct])
   (:require [clojure.core.matrix.protocols :as mp])
-  (:use clj-hdf5.mdarray))
+  (:use clj-hdf5.mdarray-abstract))
 
 (defn get-primitive-mdarrays []
   [(empty-mdarray-double [3 3])
