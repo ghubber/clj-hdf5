@@ -16,47 +16,51 @@
 
     })
 
+(defn fn-name-with-suffix
+  [fn-name-sym suffix-sym]
+  (symbol (str fn-name-sym "-" suffix-sym)))
+
 (defmacro make-concrete
   [info body]
-  (let [{implementation-key :implementation-key
-         suffix :suffix
+  (let [{implementation-key# :implementation-key
+         suffix# :suffix
          array-type :array-type
-         object-type :object-type} info]
+         object-type# :object-type} info]
   `(do
-    (defn empty-mdarray-'suffix
-      "Returns an empty MDDoubleArray of given shape"
+    (defn ~(fn-name-with-suffix "mdarray-empty" suffix#)
+      "Returns an empty implementation of MDAbstractArray of given shape"
       [~'shape]
       (let [~'shape (int-array ~'shape)]
         (new ~array-type ~'shape )))
 
-    (defn mdarray-'suffix
-      "Returns MDArrayDouble with given data, preserving shape of the data"
+    (defn ~(fn-name-with-suffix 'mdarray suffix#)
+      "Returns empty implementation of MDAbstractArray, preserving shape of the data"
       [~'data]
       (cond
-        (instance? ~array-type ~'data)
-        (new ~array-type (.getCopyAsFlatArray data) (.dimensions ~'data))
+        (instance? array-type ~'data)
+        (new array-type (.getCopyAsFlatArray ~'data) (.dimensions ~'data))
         (mp/is-scalar? ~'data)
-        (double data)
+        (double ~'data)
         :default
-        (let [~'mtx (empty-mdarray-'suffix (mp/validate-shape ~'data))]
+        (let [~'mtx ((fn-name-with-suffix 'mdarray-empty suffix#) (mp/validate-shape ~'data))]
           (mp/assign! ~'mtx ~'data)
           ~'mtx)))
 
     (extend-protocol mp/PImplementation
-      ~'array-type
-      (implementation-key [m]
-        ~implementation-key)
-      (meta-info [m]
+      array-type
+      (implementation-key [~'m]
+        implementation-key#)
+      (meta-info [~'m]
         {:doc "An implementation of a multi-dimensional array based on CISD's JHDF5 library"})
-      (new-vector [m length]
-        (empty-mdarray-'suffix [length]))
-      (new-matrix [m rows columns]
-        (empty-mdarray-'suffix [rows columns]))
-      (new-matrix-nd [m shape]
-        (empty-mdarray-'suffix shape))
-      (construct-matrix [m data]
-        (mdarray-'suffix data))
-      (supports-dimensionality? [m dims]
+      (new-vector [~'m ~'length]
+        ((fn-name-with-suffix 'mdarray-empty suffix#) [~'length]))
+      (new-matrix [~'m ~'rows ~'columns]
+        ((fn-name-with-suffix 'mdarray-empty suffix#) [~'rows ~'columns]))
+      (new-matrix-nd [~'m ~'shape]
+        ((fn-name-with-suffix 'mdarray-empty suffix#) ~'shape))
+      (construct-matrix [~'m ~'data]
+        ((fn-name-with-suffix 'mdarray suffix#) ~'data))
+      (supports-dimensionality? [~'m ~'dims]
         true)))))
 
 (make-concrete impl-infos :double)
