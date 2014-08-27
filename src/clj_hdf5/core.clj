@@ -1,10 +1,12 @@
 (ns clj-hdf5.core
   (:refer-clojure :exclude [read name])
   (:require clojure.string)
+  (:require [clojure.reflect :as r])
+  (:use [clojure.pprint :only [print-table]])
   (:import (java.io.File)
            (ch.systemsx.cisd.hdf5 HDF5Factory IHDF5SimpleReader
                                   IHDF5SimpleWriter HDF5FactoryProvider
-                                  HDF5DataClass)))
+                                  HDF5DataClass HDF5StorageLayout)))
 
 ; Record definitions
 ; A node is defined by its reader/writer and its path inside that file.
@@ -28,9 +30,14 @@
   [path]
   (= (first path) \/))
 
+(defn- relative-path?
+  [path]
+  (not (absolute-path? path)))
+
 (defn- path-concat
   [abs-path rel-path]
-  (assert (not (absolute-path? rel-path)))
+  (assert (absolute-path? abs-path))
+  (assert (relative-path? rel-path))
   (if (= abs-path "/")
     (str "/" rel-path)
     (str abs-path "/" rel-path)))
@@ -59,15 +66,35 @@
   [object]
   (isa? (class object) hdf-node))
 
+(defn dataset?
+  [object]
+  (and (node? object)
+       (. (:accessor object)  isDataSet (:path object))))
+
+(defn datatype?
+  [object]
+  (and (node? object)
+       (. (:accessor object)  isDataType (:path object))))
+
+(defn external-link?
+  [object]
+  (and (node? object)
+       (. (:accessor object)  isExternalLink (:path object))))
+
 (defn group?
   [object]
   (and (node? object)
        (. (:accessor object)  isGroup (:path object))))
 
-(defn dataset?
+(defn soft-link?
   [object]
   (and (node? object)
-       (. (:accessor object)  isDataSet (:path object))))
+       (. (:accessor object)  isSoftLink (:path object))))
+
+(defn symbolic-link?
+  [object]
+  (and (node? object)
+       (. (:accessor object)  isSymbolicLink (:path object))))
 
 (defn root?
   [object]
@@ -287,6 +314,8 @@
       nil)))
 
 (defn create-group
+  "Creates one (or multiple) child group(s) for a given parent group. The name must be
+  a relative path. Note: All intermediate groups will be created as well, if they do not already exist."
   [parent name]
   (assert (group? parent))
   (. (:accessor parent) createGroup (path-concat (:path parent) name))
@@ -325,114 +354,139 @@
   (. (. (:accessor dataset) getDataSetInformation (:path dataset))
      getRank))
 
-(defmulti create-dataset
-  (fn [parent name data] (type data)))
+(defn chunked?
+  [dataset]
+  (assert (dataset? dataset))
+  (= HDF5StorageLayout/CHUNKED (. (. (:accessor dataset) getDataSetInformation (:path dataset))
+     getStorageLayout)))
 
-(defmethod create-dataset hdf-node
-  [parent name data]
-  (assert (group? parent))
-  (assert (string? name))
-  (.copy (:accessor data) (:path data)
-         (:accessor parent)
-         (if (root? parent)
-           (str "/" name)
-           (str (:path parent) "/" name)))
-  (new hdf-node (:accessor parent) (path-concat (:path parent) name)))
+(defmulti create-scalar-dataset
+          (fn [parent name dt] dt))
 
-(defmulti ^{:private true} create-array-dataset
-  (fn [parent name data] (type (first data))))
+(defmulti create-array-dataset
+          (fn [parent name size dt] dt))
 
-(defmethod create-dataset clojure.lang.Sequential
-  [parent name data]
-  (assert (group? parent))
-  (assert (string? name))
-  (create-array-dataset parent name data))
+(defmulti create-matrix-dataset
+          (fn [parent name size-x size-y dt] dt))
 
-(defmethod create-dataset clojure.lang.IPersistentMap
-  [parent name data]
-  (assert (group? parent))
-  (assert (string? name))
-  (assert (and (= (set (keys data)) (set [:tag :data]))
-               (string? (:tag data))
-               (= (class (:data data)) byte-array-class)))
-  (let [acc       (:accessor parent)
-        path      (:path parent)
-        full-path (path-concat path name)]
-    (.writeOpaqueByteArray acc full-path (:tag data) (:data data))
-    (new hdf-node acc full-path)))
+(defmulti create-mdarray-dataset
+          (fn [parent name shape dt] dt))
 
 (defmacro ^{:private true} create-dataset-method
-  [datatype scalar-method-name
-   array-method-name array-element-type array-type]
+  [datatype writer-method-name]
   `(do
-     (defmethod ~'create-dataset ~datatype
-       [~'parent ~'name ~'data]
+     (defmethod ~'create-scalar-dataset ~datatype
+       [~'parent ~'name ~'datatype]
        (assert (group? ~'parent))
        (assert (string? ~'name))
        (let [~'acc       (:accessor ~'parent)
              ~'path      (:path ~'parent)
              ~'full-path (path-concat ~'path ~'name)]
-         (~scalar-method-name ~'acc ~'full-path ~'data)
+         (.write (~writer-method-name ~'acc) ~'full-path)
          (new ~'hdf-node ~'acc ~'full-path)))
      (defmethod ~'create-array-dataset ~datatype
-       [~'parent ~'name ~'data]
+       [~'parent ~'name ~'size ~'datatype]
        (let [~'acc       (:accessor ~'parent)
              ~'path      (:path ~'parent)
              ~'full-path (path-concat ~'path ~'name)]
-         (~array-method-name ~'acc ~'full-path
-                             (into-array ~array-element-type ~'data))
+         (.createArray (~writer-method-name ~'acc) ~'full-path  ~'size)
          (new ~'hdf-node ~'acc ~'full-path)))
-     (defmethod ~'create-dataset ~array-type
-       [~'parent ~'name ~'data]
+     (defmethod ~'create-matrix-dataset ~datatype
+       [~'parent ~'name ~'size-x ~'size-y ~'datatype]
        (assert (group? ~'parent))
        (assert (string? ~'name))
        (let [~'acc       (:accessor ~'parent)
              ~'path      (:path ~'parent)
              ~'full-path (path-concat ~'path ~'name)]
-         (~array-method-name ~'acc ~'full-path ~'data)
+         (.createMatrix (~writer-method-name ~'acc) ~'full-path  ~'size-x ~'size-y)
+         (new ~'hdf-node ~'acc ~'full-path)))
+     (defmethod ~'create-mdarray-dataset ~datatype
+                [~'parent ~'name ~'shape ~'datatype]
+       (assert (group? ~'parent))
+       (assert (string? ~'name))
+       (let [~'acc       (:accessor ~'parent)
+             ~'path      (:path ~'parent)
+             ~'full-path (path-concat ~'path ~'name)]
+         (.createMDArray (~writer-method-name ~'acc) ~'full-path (int-array ~'shape))
          (new ~'hdf-node ~'acc ~'full-path)))))
 
 (create-dataset-method
-  Byte .writeByte .writeByteArray Byte/TYPE byte-array-class)
+  Byte .byte )
 (create-dataset-method
-  Short .writeShort .writeShortArray Short/TYPE short-array-class)
+  Short .int16 )
 (create-dataset-method
-  Integer .writeInt .writeIntArray Integer/TYPE int-array-class)
+  Integer .int32 )
 (create-dataset-method
-  Long .writeLong .writeLongArray Long/TYPE long-array-class)
+  Long .long)
 (create-dataset-method
-  Float .writeFloat .writeFloatArray Float/TYPE float-array-class)
+  Float .float32)
 (create-dataset-method
-  Double .writeDouble .writeDoubleArray Double/TYPE double-array-class)
-(create-dataset-method
-  String .writeString .writeStringArray String string-array-class)
+  Double .double)
+;;(create-dataset-method
+;;  String .writeString .writeStringArray .string String string-array-class)
 
-(defn- read-scalar-dataset
-  [acc path dtclass]
-  (cond
-   (= dtclass HDF5DataClass/STRING)
-      (. acc readString path)
-   (= dtclass HDF5DataClass/INTEGER)
-      (. acc readLong path)
-   (= dtclass HDF5DataClass/FLOAT)
-      (. acc readDouble path)
-   :else
-      nil))
+(defmulti read-scalar-dataset
+          (fn [acc full-path dt] dt))
 
-(defn- read-array-dataset
-  [acc path dtclass]
-  (cond
-   (= dtclass HDF5DataClass/STRING)
-      (vec (. acc readStringArray path))
-   (= dtclass HDF5DataClass/INTEGER)
-      (vec (. acc readLongArray path))
-   (= dtclass HDF5DataClass/FLOAT)
-      (vec (. acc readDoubleArray path))
-   (= dtclass HDF5DataClass/OPAQUE)
-      {:tag  (. acc tryGetOpaqueTag path)
-       :data (. acc readAsByteArray path)}
-   :else
-      nil))
+(defmulti read-array-dataset
+          (fn [acc full-path dt] dt))
+
+(defmulti read-matrix-dataset
+          (fn [acc full-path dt] dt))
+
+(defmulti read-mdarray-dataset
+          (fn [acc full-path dt] dt))
+
+(defmacro ^{:private true} read-dataset-method
+  [datatype reader-method-name]
+  `(do
+     (defmethod ~'read-scalar-dataset ~datatype
+                [~'acc ~'full-path ~'datatype]
+         (.read (~reader-method-name ~'acc) ~'full-path)
+         (new ~'hdf-node ~'acc ~'full-path))
+     (defmethod ~'read-array-dataset ~datatype
+                [~'acc ~'full-path ~'datatype]
+         (.readArray (~reader-method-name ~'acc) ~'full-path)
+         (new ~'hdf-node ~'acc ~'full-path))
+     (defmethod ~'read-matrix-dataset ~datatype
+                [~'acc ~'full-path ~'datatype]
+         (.readMatrix (~reader-method-name ~'acc) ~'full-path)
+         (new ~'hdf-node ~'acc ~'full-path))
+     (defmethod ~'read-mdarray-dataset ~datatype
+                [~'acc ~'full-path ~'datatype]
+         (.readMDArray (~reader-method-name ~'acc) ~'full-path)
+         (new ~'hdf-node ~'acc ~'full-path))))
+
+(read-dataset-method
+  Byte/TYPE  .byte)
+(read-dataset-method
+  Short/TYPE  .int16)
+(read-dataset-method
+  Integer/TYPE  .int32)
+(read-dataset-method
+  Long/TYPE  .long)
+(read-dataset-method
+  Float/TYPE .float32)
+(read-dataset-method
+  Double/TYPE  .double)
+;;(read-dataset-method
+;;  String .readString .string String)
+
+(defn- get-java-type
+  "Gets the appropriate Java type of a dataset object. While the HDF5DataClass of a dataset might
+  be FLOAT, the dataset might contain double precision floats (doubles) instead. This method would
+  return Double/TYPE in such a case. Note that in Java, Double/TYPE is equivalent to double.class,
+  so we're talking about primitive types here."
+  [ds]
+  (assert (dataset? ds))
+  (let [dt (datatype ds)]
+    (.tryGetJavaType dt)))
+
+(defn print-type-info
+  [t]
+  (print-table
+    (sort-by :name
+             (filter :exception-types (:members (r/reflect t))))))
 
 (defmethod read hdf-node
   [ds]
@@ -440,17 +494,37 @@
   (let [acc     (:accessor ds)
         path    (:path ds)
         dsinfo  (.getDataSetInformation acc path)
-        dims    (vec (.getDimensions dsinfo))
-        dt      (datatype ds)
-        dtclass (.getDataClass dt)
-        dtdims  (if (.isArrayType dt)
-                  (vec (.getDimensions dt))
-                  [])
-        rank    (+ (count dims) (count dtdims))]
+        rank    (count (.getDimensions dsinfo))
+        jt      (get-java-type ds)]
     (cond
      (= rank 0)
-        (read-scalar-dataset acc path dtclass)
+        (read-scalar-dataset acc path jt)
      (= rank 1)
-        (read-array-dataset acc path dtclass)
+        (read-array-dataset acc path jt)
+     (= rank 2)
+        (read-matrix-dataset acc path jt)
      :else
-        (throw (Exception. "datasets with rank > 1 not implemented yet")))))
+        (read-mdarray-dataset acc path jt))))
+
+
+(defn create-dataset
+  "Creates a dataset node for the given group and returns it."
+  [group name shape dt]
+  (assert (group? group))
+  (assert (string? name))
+  (let [ acc (:accessor group)
+         rank (if (coll? shape)
+               (count shape)
+               0)
+         path (path-concat (:path group) name)]
+    (do
+    (cond
+      (= rank 0)
+        (create-scalar-dataset group name dt)
+      (= rank 1)
+        (create-array-dataset group name (int (first shape)) dt)
+      (= rank 2)
+        (create-matrix-dataset group name (int (first shape)) (int (second shape)) dt)
+      :else
+        (create-mdarray-dataset group name shape dt))
+    (new hdf-node (:accessor group) path ))))

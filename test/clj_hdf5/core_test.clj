@@ -55,6 +55,22 @@
         (is (= "/node1/node2" (:path node2)))
         (is (= "/node1/node2/node3" (:path node3)))))))
 
+(deftest create-datasets)
+(testing "Creation of datasets")
+(let [h5file (get-tmp-file)]
+  (with-open [root h5file :read-write]
+             (let [ds1 (create-dataset root "ds1" [10] Float)
+                   ds2 (create-dataset root "ds2" [10 20] Float)
+                   ds3 (create-dataset root "ds3" [10 20 30] Float)
+                   ds4 (create-dataset root "ds4" [10 20 30 40] Float)
+                   data1 (read ds1)
+                   data2 (read ds2)
+                   data3 (read ds1)
+                   data4 (read ds4)]
+               (is (true? (dataset? ds1)))
+               (is (true? (dataset? ds2)))
+               (is (true? (dataset? ds3)))
+               (is (true? (dataset? ds4))))))
 
 
 
