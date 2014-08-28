@@ -1,5 +1,7 @@
 (ns clj-hdf5.core-test
   (:require [clojure.java.io :as io])
+  (:require [clojure.core.matrix :as m])
+  (:use clj-hdf5.mdarray)
   (:use [clojure.test]
         [clj-hdf5.core]))
 
@@ -59,18 +61,22 @@
 (testing "Creation of datasets")
 (let [h5file (get-tmp-file)]
   (with-open [root h5file :read-write]
-             (let [ds1 (create-dataset root "ds1" [10] Float)
-                   ds2 (create-dataset root "ds2" [10 20] Float)
-                   ds3 (create-dataset root "ds3" [10 20 30] Float)
-                   ds4 (create-dataset root "ds4" [10 20 30 40] Float)
+             (let [ds1 (create-dataset root "ds1" [10] Float/TYPE)
+                   ds2 (create-dataset root "ds2" [10 20] Float/TYPE)
+                   ds3 (create-dataset root "ds3" [10 20 30] Float/TYPE)
+                   ds4 (create-dataset root "ds4" [10 20 30 40] Float/TYPE)
                    data1 (read ds1)
                    data2 (read ds2)
-                   data3 (read ds1)
+                   data3 (read ds3)
                    data4 (read ds4)]
                (is (true? (dataset? ds1)))
                (is (true? (dataset? ds2)))
                (is (true? (dataset? ds3)))
-               (is (true? (dataset? ds4))))))
+               (is (true? (dataset? ds4)))
+               (is (= 1 (m/dimensionality data1)))
+               (is (= 2 (m/dimensionality data2)))
+               (is (= 3 (m/dimensionality data3)))
+               (is (= 4 (m/dimensionality data4))))))
 
 
 

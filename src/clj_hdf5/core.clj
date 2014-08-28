@@ -411,17 +411,17 @@
          (new ~'hdf-node ~'acc ~'full-path)))))
 
 (create-dataset-method
-  Byte .byte )
+  Byte/TYPE .byte )
 (create-dataset-method
-  Short .int16 )
+  Short/TYPE .int16 )
 (create-dataset-method
-  Integer .int32 )
+  Integer/TYPE .int32 )
 (create-dataset-method
-  Long .long)
+  Long/TYPE .long)
 (create-dataset-method
-  Float .float32)
+  Float/TYPE .float32)
 (create-dataset-method
-  Double .double)
+  Double/TYPE .double)
 ;;(create-dataset-method
 ;;  String .writeString .writeStringArray .string String string-array-class)
 
@@ -442,20 +442,16 @@
   `(do
      (defmethod ~'read-scalar-dataset ~datatype
                 [~'acc ~'full-path ~'datatype]
-         (.read (~reader-method-name ~'acc) ~'full-path)
-         (new ~'hdf-node ~'acc ~'full-path))
+         (.read (~reader-method-name ~'acc) ~'full-path))
      (defmethod ~'read-array-dataset ~datatype
                 [~'acc ~'full-path ~'datatype]
-         (.readArray (~reader-method-name ~'acc) ~'full-path)
-         (new ~'hdf-node ~'acc ~'full-path))
+         (.readArray (~reader-method-name ~'acc) ~'full-path))
      (defmethod ~'read-matrix-dataset ~datatype
                 [~'acc ~'full-path ~'datatype]
-         (.readMatrix (~reader-method-name ~'acc) ~'full-path)
-         (new ~'hdf-node ~'acc ~'full-path))
+         (.readMatrix (~reader-method-name ~'acc) ~'full-path))
      (defmethod ~'read-mdarray-dataset ~datatype
                 [~'acc ~'full-path ~'datatype]
-         (.readMDArray (~reader-method-name ~'acc) ~'full-path)
-         (new ~'hdf-node ~'acc ~'full-path))))
+         (.readMDArray (~reader-method-name ~'acc) ~'full-path))))
 
 (read-dataset-method
   Byte/TYPE  .byte)
