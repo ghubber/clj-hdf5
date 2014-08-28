@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [read name])
   (:require clojure.string)
   (:require [clojure.reflect :as r])
+  (:use clj-hdf5.mdarray)
   (:use [clojure.pprint :only [print-table]])
   (:import (java.io.File)
            (ch.systemsx.cisd.hdf5 HDF5Factory IHDF5SimpleReader
@@ -501,6 +502,15 @@
         (read-matrix-dataset acc path jt)
      :else
         (read-mdarray-dataset acc path jt))))
+
+(defn write
+  "Writes data to a dataset node. This method will try to coerce
+  the values to the dataset's primitive type."
+  [ds data]
+  (assert (dataset? ds))
+  (let [ds-type (get-java-type ds)
+        ]
+    ))
 
 
 (defn create-dataset

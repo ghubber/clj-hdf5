@@ -1,7 +1,6 @@
 (ns clj-hdf5.core-test
   (:require [clojure.java.io :as io])
   (:require [clojure.core.matrix :as m])
-  (:use clj-hdf5.mdarray)
   (:use [clojure.test]
         [clj-hdf5.core]))
 
@@ -57,7 +56,7 @@
         (is (= "/node1/node2" (:path node2)))
         (is (= "/node1/node2/node3" (:path node3)))))))
 
-(deftest create-datasets)
+(deftest create-datasets
 (testing "Creation of datasets")
 (let [h5file (get-tmp-file)]
   (with-open [root h5file :read-write]
@@ -76,7 +75,7 @@
                (is (= 1 (m/dimensionality data1)))
                (is (= 2 (m/dimensionality data2)))
                (is (= 3 (m/dimensionality data3)))
-               (is (= 4 (m/dimensionality data4))))))
+               (is (= 4 (m/dimensionality data4)))))))
 
 
 
