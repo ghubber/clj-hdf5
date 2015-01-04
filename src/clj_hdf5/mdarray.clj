@@ -1,8 +1,9 @@
 (ns clj-hdf5.mdarray
-  (:require [clojure.core.matrix.protocols :as mp])
-  (:require [clojure.core.matrix.implementations :as imp])
-  (:import  [ch.systemsx.cisd.base.mdarray MDAbstractArray MDByteArray MDDoubleArray MDFloatArray MDIntArray
-                                           MDLongArray MDShortArray]))
+  (:require [clojure.core.matrix.protocols :as mp]
+            [clojure.core.matrix.implementations :as imp])
+  (:import  [ch.systemsx.cisd.base.mdarray
+             MDAbstractArray MDByteArray MDDoubleArray
+             MDFloatArray MDIntArray MDLongArray MDShortArray]))
 
 (defn value-coerce [m x]
   (let [t (mp/element-type m)]

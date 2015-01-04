@@ -1,13 +1,12 @@
 (ns clj-hdf5.core
   (:refer-clojure :exclude [read name])
-  (:require clojure.string)
-  (:require [clojure.reflect :as r])
+  (:require [clojure.java.io :as io]
+            [clojure.string :as str])
   (:use clj-hdf5.mdarray)
-  (:use [clojure.pprint :only [print-table]])
-  (:import (java.io.File)
-           (ch.systemsx.cisd.hdf5 HDF5Factory IHDF5SimpleReader
+  (:import (ch.systemsx.cisd.hdf5 HDF5Factory IHDF5SimpleReader
                                   IHDF5SimpleWriter HDF5FactoryProvider
-                                  HDF5DataClass HDF5StorageLayout)))
+                                  HDF5DataClass HDF5StorageLayout)
+           (java.io.File)))
 
 ; Record definitions
 ; A node is defined by its reader/writer and its path inside that file.
@@ -26,7 +25,7 @@
   [accessor path attrname]
   (new hdf-attribute accessor path attrname))
 
-; Private utility definitions 
+; Private utility definitions
 (defn- absolute-path?
   [path]
   (= (first path) \/))
@@ -107,14 +106,14 @@
   (isa? (class object) hdf-attribute))
 
 ; Opening and closing files.
-; 
+;
 
 (defn open
   "The return value of open/create is the root group object."
   ([file] (open file :read-only))
   ([file mode]
-     (assert (isa? (class file) java.io.File))
-     (let [factory (HDF5FactoryProvider/get)]
+     (let [factory (HDF5FactoryProvider/get)
+           file (io/file file)]
        (new hdf-node
             (case mode
                   :read-only   (. factory openForReading file)
@@ -163,12 +162,12 @@
 
 (defn name
   [node]
-  (last (clojure.string/split (path node) #"/")))
+  (last (str/split (path node) #"/")))
 
 (defn parent
   [node]
   (assert (node? node))
-  (let [path (clojure.string/split (:path node) #"/")]
+  (let [path (str/split (:path node) #"/")]
     (if (empty? path)
       nil
       (let [parent-path (subvec path 0 (dec (count path)))]
@@ -176,7 +175,7 @@
              (:accessor node)
              (if (= (count parent-path) 1)
                "/"
-               (clojure.string/join "/" parent-path)))))))
+               (str/join "/" parent-path)))))))
 
 (defn root
   [node]
@@ -185,7 +184,7 @@
 
 (defn level
   [node]
-  (max 0 (dec (count (clojure.string/split (path node) #"/")))))
+  (max 0 (dec (count (str/split (path node) #"/")))))
 
 (defn attributes
   [node]
@@ -479,12 +478,6 @@
   (let [dt (datatype ds)]
     (.tryGetJavaType dt)))
 
-(defn print-type-info
-  [t]
-  (print-table
-    (sort-by :name
-             (filter :exception-types (:members (r/reflect t))))))
-
 (defmethod read hdf-node
   [ds]
   (assert (dataset? ds))
@@ -504,7 +497,7 @@
         (read-mdarray-dataset acc path jt))))
 
 (defn write
-  "Writes data to a dataset node. This method will try to coerce
+  "TODO! Writes data to a dataset node. This method will try to coerce
   the values to the dataset's primitive type."
   [ds data]
   (assert (dataset? ds))
@@ -534,3 +527,15 @@
       :else
         (create-mdarray-dataset group name shape dt))
     (new hdf-node (:accessor group) path ))))
+
+
+(comment
+  (require '[clojure.reflect :as r])
+  (use '[clojure.pprint :only [print-table]])
+
+  (defn print-type-info
+    [t]
+    (print-table
+     (sort-by :name
+              (filter :exception-types (:members (r/reflect t))))))
+  )

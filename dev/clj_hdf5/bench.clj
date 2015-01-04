@@ -24,4 +24,4 @@
   (cc/quick-bench (get-concrete-mdarrays )))
 
 (defn benchmark-abstract []
-      (cc/quick-bench (get-abstract-mdarrays )))
+  (cc/quick-bench (get-abstract-mdarrays )))
