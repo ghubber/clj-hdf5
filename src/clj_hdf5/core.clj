@@ -464,7 +464,7 @@
 (read-dataset-method
   Float/TYPE .float32)
 (read-dataset-method
-  Double/TYPE  .double)
+ Double/TYPE  .float64)
 ;;(read-dataset-method
 ;;  String .readString .string String)
 
@@ -530,6 +530,34 @@
 
 
 (comment
+
+  (def db (create "/tmp/test.h5"))
+  (def db (open "/tmp/weights_history.h5"))
+  (def db (open "/var/tmp/multi2.h5"))
+
+  (def group (create-group db "spike-train"))
+
+  (def dataset (create-dataset group "neuron-1" "hello world!"))
+
+  (def array-dataset (create-dataset group "neuron-2" (int-array 10 (int 1023))))
+
+  (vec (first (read  (get-dataset db "/weight_history"))))
+  (vec (first (read  (get-dataset db "/multiarray"))))
+
+  (use 'aprint.core)
+  (map :name (:members (r/reflect (:accessor (get-dataset db "/weight_history")))))
+  (def macc (:accessor (get-dataset db "/multiarray")) )
+
+  (.readDoubleMatrix macc "multiarray")
+  (.float64 macc)
+  (.getObjectInformation macc)
+  (r/reflect macc)
+  (type macc)
+  (members db)
+
+  (close db)
+
+
   (require '[clojure.reflect :as r])
   (use '[clojure.pprint :only [print-table]])
 
@@ -537,5 +565,4 @@
     [t]
     (print-table
      (sort-by :name
-              (filter :exception-types (:members (r/reflect t))))))
-  )
+              (filter :exception-types (:members (r/reflect t)))))))
